@@ -1,0 +1,71 @@
+#Select subscription, store as variable
+$Subscription = "Pay-As-You-Go"
+Select-AzureSubscription $Subscription
+
+#Set Storage Account and Location
+$Location = "East US 2"
+$StorageAccount = "crxndev"
+Set-AzureSubscription -SubscriptionName $Subscription -CurrentStorageAccountName $StorageAccount
+
+
+#Select the ImageFamily and store as variable
+$imageFamily = "Windows Server 2012 R2 Datacenter"
+$imageName = Get-AzureVMImage | where { $_.ImageFamily -eq $imageFamily } | 
+                                sort PublishedData -Descending | 
+                                select -ExpandProperty ImageName -First 1
+
+#Define VM size to deploy
+$vmSize = "Small"
+
+#Define Cloud Service Name, store as variable
+$serviceName = "CRXN-D-Svc"
+
+#Specify Username, password and computer name
+$adminUser = "AZAdmin"
+$password = "Wk0c2608!"
+
+
+#Use New-AzureVMConfig to create a VM configuration Object
+$vmName = "CRXNDev002"
+
+#Create a new VM using New-AzureQuickVM cmdlet
+New-AzureQuickVM -Windows `
+                    -ServiceName $serviceName `
+                    -Name $vmName `
+                    -ImageName $imageName `
+                    -Location $location `
+                    -InstanceSize $vmSize `
+                    -AdminUsername $adminUser `
+                    -Password $password
+
+$vmConfig = New-AzureVMConfig -Name $vmName `
+                                -InstanceSize $vmSize `
+                                -ImageName $imageName `
+
+#Specify provisioning configuration
+$vmConfig | Add-AzureProvisioningConfig -Windows `
+                                        -AdminUsername $adminUser `
+                                        -Password $password
+                           
+#Add Data Disk to VM configuration
+$vmConfig | Add-AzureDataDisk -CreateNew `
+                                -DiskSizeInGB 100 `
+                                -DiskLabel "data" `
+                                -LUN 0 `
+
+$vmConfig | Add-AzureEndpoint -Name "HTTP" `
+                                -Protocol tcp `
+                                -LocalPort 80 `
+                                -PublicPort 80 `
+                                -LBSetName "LBHTTP" `
+                                -DefaultProbe
+
+$vmConfig | Add-AzureEndpoint -Name "HTTPS" `
+                                -Protocol tcp `
+                                -LocalPort 443 `
+                                -PublicPort 443 `
+                                -LBSetName "LBHTTPS" `
+                                -DefaultProbe
+                         
+#Create a new VM using New-AzureVM
+New-AzureVM -ServiceName $serviceName -VMs $vmConfig
