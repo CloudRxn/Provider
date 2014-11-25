@@ -1,0 +1,38 @@
+#Select subscription, store as variable
+$Subscription = "Pay-As-You-Go"
+Select-AzureSubscription $Subscription
+
+#Set Storage Account and Location
+$Location = "East US 2"
+$StorageAccount = "crxndev"
+Set-AzureSubscription -SubscriptionName $Subscription -CurrentStorageAccountName $StorageAccount
+
+
+#Select the ImageFamily and store as variable
+$imageFamily = "Windows Server 2012 R2 Datacenter"
+$imageName = Get-AzureVMImage | where { $_.ImageFamily -eq $imageFamily } | 
+                                sort PublishedData -Descending | 
+                                select -ExpandProperty ImageName -First 1
+
+#Define VM size to deploy
+$vmSize = "Small"
+
+#Define Cloud Service Name, store as variable
+$serviceName = "CRXN-D-Svc"
+
+#Specify Username, password and computer name
+$adminUser = "AZAdmin"
+$password = "SetNewPassword"
+
+#Specify VMName
+$vmName = "CRXNDev001"
+
+#Create a new VM using New-AzureQuickVM cmdlet
+New-AzureQuickVM -Windows `
+                    -ServiceName $serviceName `
+                    -Name $vmName `
+                    -ImageName $imageName `
+                    -Location $location `
+                    -InstanceSize $vmSize `
+                    -AdminUsername $adminUser `
+                    -Password $password
